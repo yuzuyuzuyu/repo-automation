@@ -1,25 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:best-practices",
-    "customManagers:githubActionsVersions"
+    "github>yuzuyuzuyu/repo-automation:public#v1.0.0"
   ],
-  "platformAutomerge": true,
-  "internalChecksFilter": "strict",
-  "statusCheckWhen": {
-    "artifactError": "always"
-  },
-  "minimumReleaseAge": "3 days",
-  "rebaseWhen": "behind-base-branch",
-  "automergeType": "pr",
-  "prHourlyLimit": 0,
-  "timezone": "Australia/Melbourne",
-  "lockFileMaintenance": {
-    "enabled": true,
-    "automerge": true,
-    "minimumReleaseAge": null,
-    "rebaseWhen": "behind-base-branch"
-  },
   "packageRules": [
     {
       "extends": [

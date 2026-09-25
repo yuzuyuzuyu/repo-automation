@@ -32,6 +32,7 @@ export async function check(config) {
   assert.deepEqual(errors, []);
   return resolved;
 }
+await check(JSON.parse(fs.readFileSync(path.join(root, 'renovate.json'), 'utf8')));
 const rules = ['non-major', 'major', 'pre-one', 'action-digest-review', 'renovate-engine', 'node-runtime'];
 const notes = ['age-3-days', 'age-7-days'].map((name) => ({ extends: [preset(name)] }));
 export function policy(profile, exceptions = []) {
