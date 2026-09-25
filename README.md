@@ -130,8 +130,15 @@ and enable auto-merge. A manual Renovate dry run verifies the installation.
 After adding or rotating credentials, run **Check Renovate credentials** (or
 `gh workflow run check-credentials.yml --repo yuzuyuzuyu/repo-automation`). It
 checks the lookup token and App credentials independently, including the public
-Aqua Security tag lookup and the installation permissions Renovate needs. No
+Aqua Security and shared-repository tag lookups, plus the installation permissions
+Renovate needs. No
 secret values are printed. An `Invalid keyData` error means the App key cannot be
 parsed; upload the complete PEM using file input to avoid truncated multiline
 pastes. After that check passes, run Renovate with `dry-run` enabled to verify the
 full configuration before its next scheduled run.
+
+The lookup token must also satisfy the organization policy for the public shared
+repository. The current `yuzuyuzuyu` policy rejects fine-grained PATs with a
+lifetime longer than 366 days. An upstream lookup succeeding does not prove this
+organization lookup will succeed. Use a compliant expiry; if regenerating changes
+the token value, replace `RENOVATE_GITHUB_LOOKUP_TOKEN` in every consumer using it.
