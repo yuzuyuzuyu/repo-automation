@@ -126,3 +126,12 @@ For the multiline private key, file input is also supported:
 Keep the key file outside the checkout. Before enabling this repo's Renovate,
 require `test` and `Dependency update safety` on main, require up-to-date branches,
 and enable auto-merge. A manual Renovate dry run verifies the installation.
+
+After adding or rotating credentials, run **Check Renovate credentials** (or
+`gh workflow run check-credentials.yml --repo yuzuyuzuyu/repo-automation`). It
+checks the lookup token and App credentials independently, including the public
+Aqua Security tag lookup and the installation permissions Renovate needs. No
+secret values are printed. An `Invalid keyData` error means the App key cannot be
+parsed; upload the complete PEM using file input to avoid truncated multiline
+pastes. After that check passes, run Renovate with `dry-run` enabled to verify the
+full configuration before its next scheduled run.
