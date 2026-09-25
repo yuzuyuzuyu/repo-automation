@@ -1,0 +1,25 @@
+name: Watchdog
+description: Retry allowlisted current-revision failures once and reconcile maintenance issues.
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ github.event.repository.default_branch }}
+        persist-credentials: false
+    - name: Keep scheduled workflows alive
+      shell: bash
+      run: |
+        gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/workflows" \
+          --jq '.workflows[] | select(.state == "active" or .state == "disabled_inactivity") | .id' |
+          while read -r id; do
+            gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/${id}/enable"
+          done
+      env:
+        GH_TOKEN: ${{ github.token }}
+    - name: Reconcile maintenance updates
+      shell: bash
+      run: python3 "$AUTOMATION_PATH/../../src/maintenance.py" updates
+      env:
+        GH_TOKEN: ${{ github.token }}
+        AUTOMATION_PATH: ${{ github.action_path }}

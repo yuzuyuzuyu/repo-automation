@@ -1,0 +1,10 @@
+{
+  "extends": [
+    "./default"
+  ],
+  "platformAutomerge": true,
+  "internalChecksFilter": "strict",
+  "statusCheckWhen": {
+    "artifactError": "always"
+  }
+}

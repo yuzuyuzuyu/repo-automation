@@ -1,0 +1,11 @@
+{
+  "description": "Supply-chain soak: never automerge a GitHub Actions digest change. A moved tag on a SHA-pinned action shows up as a digest update; a human compares it against the upstream release first",
+  "matchManagers": [
+    "github-actions"
+  ],
+  "matchUpdateTypes": [
+    "digest",
+    "pinDigest"
+  ],
+  "automerge": false
+}

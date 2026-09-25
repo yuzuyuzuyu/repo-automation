@@ -1,0 +1,27 @@
+name: Renovate
+on:
+  schedule:
+    - cron: '53 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Plan without changing repositories
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+jobs:
+  renovate:
+    if: vars.RENOVATE_APP_CLIENT_ID != ''
+    uses: ./.github/workflows/renovate-runner.yml
+    with:
+      app-client-id: ${{ vars.RENOVATE_APP_CLIENT_ID }}
+      native-automerge: true
+      dry-run: ${{ inputs.dry-run || false }}
+    secrets:
+      RENOVATE_APP_PRIVATE_KEY: ${{ secrets.RENOVATE_APP_PRIVATE_KEY }}
+      RENOVATE_GITHUB_LOOKUP_TOKEN: ${{ secrets.RENOVATE_GITHUB_LOOKUP_TOKEN }}

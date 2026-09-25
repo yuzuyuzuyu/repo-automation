@@ -1,0 +1,15 @@
+name: Keepalive
+description: Re-enable active or inactivity-disabled workflows, leaving manual disables intact.
+runs:
+  using: composite
+  steps:
+    - name: Keep scheduled workflows alive
+      shell: bash
+      run: |
+        gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/workflows" \
+          --jq '.workflows[] | select(.state == "active" or .state == "disabled_inactivity") | .id' |
+          while read -r id; do
+            gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/${id}/enable"
+          done
+      env:
+        GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,35 @@
+name: Release shared automation
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: New immutable semantic version, for example v1.1.0
+        required: true
+        type: string
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: automation-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Release only a tested default-branch commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(gh api "repos/$GH_REPO/commits/$DEFAULT_BRANCH" --jq .sha)" = "$GITHUB_SHA"
+          gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&event=push&per_page=100" |
+            jq -e 'any(.workflow_runs[]; .status == "completed" and .conclusion == "success")'
+          # Creating the ref fails if this version already exists; never move a release tag.
+          gh api --method POST "repos/$GH_REPO/git/refs" -f "ref=refs/tags/$VERSION" -f "sha=$GITHUB_SHA"
+          gh release create "$VERSION" --verify-tag --title "$VERSION" --generate-notes

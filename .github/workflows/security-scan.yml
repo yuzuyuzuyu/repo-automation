@@ -1,0 +1,26 @@
+name: Maintenance security scan
+on:
+  schedule:
+  - cron: 41 6 * * *
+  workflow_dispatch: null
+permissions:
+  contents: read
+  actions: write
+  issues: write
+  pull-requests: read
+  packages: read
+  statuses: read
+  checks: read
+concurrency:
+  group: maintenance-security-scan
+  cancel-in-progress: false
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ github.event.repository.default_branch }}
+        persist-credentials: false
+    - uses: ./actions/security-scan

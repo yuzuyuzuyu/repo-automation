@@ -1,0 +1,74 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    "customManagers:githubActionsVersions"
+  ],
+  "platformAutomerge": true,
+  "internalChecksFilter": "strict",
+  "statusCheckWhen": {
+    "artifactError": "always"
+  },
+  "minimumReleaseAge": "3 days",
+  "rebaseWhen": "behind-base-branch",
+  "automergeType": "pr",
+  "prHourlyLimit": 0,
+  "timezone": "Australia/Melbourne",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "minimumReleaseAge": null,
+    "rebaseWhen": "behind-base-branch"
+  },
+  "packageRules": [
+    {
+      "extends": [
+        "github>yuzuyuzuyu/repo-automation:non-major#v1.0.0"
+      ]
+    },
+    {
+      "extends": [
+        "github>yuzuyuzuyu/repo-automation:major#v1.0.0"
+      ]
+    },
+    {
+      "extends": [
+        "github>yuzuyuzuyu/repo-automation:action-digest-review#v1.0.0"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "renovate",
+        "ghcr.io/renovatebot/renovate"
+      ],
+      "groupName": "Renovate engine",
+      "schedule": [
+        "before 6am on monday"
+      ],
+      "pinDigests": false
+    },
+    {
+      "extends": [
+        "github>yuzuyuzuyu/repo-automation:age-3-days#v1.0.0"
+      ]
+    },
+    {
+      "extends": [
+        "github>yuzuyuzuyu/repo-automation:age-7-days#v1.0.0"
+      ]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^actions/security-scan/action\\.yml$/"
+      ],
+      "matchStrings": [
+        "default: (?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "aquasecurity/trivy",
+      "datasourceTemplate": "github-releases"
+    }
+  ]
+}

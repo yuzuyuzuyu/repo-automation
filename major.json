@@ -1,0 +1,9 @@
+{
+  "description": "Attempt major updates automatically after a week; CI must pass before merge",
+  "matchUpdateTypes": [
+    "major"
+  ],
+  "automerge": true,
+  "minimumReleaseAge": "7 days",
+  "dependencyDashboardApproval": false
+}

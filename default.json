@@ -1,0 +1,44 @@
+{
+  "extends": [
+    "config:best-practices",
+    "customManagers:githubActionsVersions"
+  ],
+  "osvVulnerabilityAlerts": true,
+  "prHourlyLimit": 0,
+  "minimumReleaseAge": "3 days",
+  "rebaseWhen": "behind-base-branch",
+  "dependencyDashboard": true,
+  "lockFileMaintenance": {
+    "minimumReleaseAge": null,
+    "enabled": true,
+    "automerge": true,
+    "rebaseWhen": "behind-base-branch"
+  },
+  "timezone": "Australia/Melbourne",
+  "description": "Shared dependency maintenance policy; repository rules preserve local exceptions.",
+  "automergeType": "pr",
+  "vulnerabilityAlerts": {
+    "automerge": true
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)(renovate|renovate-config)\\.json5?$/"
+      ],
+      "matchStrings": [
+        "github>yuzuyuzuyu/repo-automation(?::[a-z0-9-]+)?#(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "yuzuyuzuyu/repo-automation",
+      "datasourceTemplate": "github-tags"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "yuzuyuzuyu/repo-automation"
+      ],
+      "groupName": "Repository automation"
+    }
+  ]
+}

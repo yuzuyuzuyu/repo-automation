@@ -1,0 +1,8 @@
+{
+  "description": "Pre-1.0 updates use the same required CI gate",
+  "matchCurrentVersion": "<1.0.0",
+  "matchUpdateTypes": [
+    "minor"
+  ],
+  "automerge": true
+}

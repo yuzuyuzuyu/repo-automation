@@ -1,0 +1,16 @@
+name: Publication
+description: Check current default-branch revision and successful CI; caller must check out its configuration.
+outputs:
+  ready:
+    description: Whether this revision can proceed to publication
+    value: ${{ steps.gate.outputs.ready }}
+runs:
+  using: composite
+  steps:
+    - name: Check publication readiness
+      shell: bash
+      run: python3 "$AUTOMATION_PATH/../../src/publication.py"
+      id: gate
+      env:
+        GH_TOKEN: ${{ github.token }}
+        AUTOMATION_PATH: ${{ github.action_path }}

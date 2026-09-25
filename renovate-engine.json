@@ -1,0 +1,10 @@
+{
+  "description": "Renovate engine: several releases a day, so take the weekly one; no digest pin because the annotated RENOVATE_VERSION env var holds a plain tag",
+  "matchDepNames": [
+    "ghcr.io/renovatebot/renovate"
+  ],
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "pinDigests": false
+}

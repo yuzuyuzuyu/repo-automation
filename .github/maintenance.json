@@ -1,0 +1,11 @@
+{
+  "workflow": "security-scan.yml",
+  "filesystem": true,
+  "images": [],
+  "ci_workflow": "ci.yml",
+  "retry_workflows": [
+    "ci.yml",
+    "renovate.yml",
+    "security-scan.yml"
+  ]
+}

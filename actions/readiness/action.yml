@@ -1,0 +1,11 @@
+name: Readiness
+description: Reconcile Dependency update safety using pinned code and GitHub metadata only.
+runs:
+  using: composite
+  steps:
+    - name: Reconcile dependency checks
+      shell: bash
+      run: python3 "$AUTOMATION_PATH/../../src/renovate_readiness.py"
+      env:
+        GH_TOKEN: ${{ github.token }}
+        AUTOMATION_PATH: ${{ github.action_path }}

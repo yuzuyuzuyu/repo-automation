@@ -1,0 +1,18 @@
+name: Host Audit
+description: Reconcile a completed host audit report without executing infrastructure code.
+inputs:
+  report:
+    description: Completed audit JSON from the infrastructure job
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Reconcile completed host audit
+      shell: bash
+      run: |
+        printf '%s' "$AUDIT_REPORT" > "$RUNNER_TEMP/audit-results.json"
+        python3 "$AUTOMATION_PATH/../../src/maintenance.py" host "$RUNNER_TEMP/audit-results.json"
+      env:
+        GH_TOKEN: ${{ github.token }}
+        AUTOMATION_PATH: ${{ github.action_path }}
+        AUDIT_REPORT: ${{ inputs.report }}

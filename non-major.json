@@ -1,0 +1,12 @@
+{
+  "description": "Supply-chain soak: automerged PRs rebase onto main first so CI ran against the current base",
+  "matchUpdateTypes": [
+    "minor",
+    "patch",
+    "pin",
+    "pinDigest",
+    "digest"
+  ],
+  "automerge": true,
+  "rebaseWhen": "behind-base-branch"
+}
