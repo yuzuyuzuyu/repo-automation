@@ -138,7 +138,10 @@ pastes. After that check passes, run Renovate with `dry-run` enabled to verify t
 full configuration before its next scheduled run.
 
 The lookup token must also satisfy the organization policy for the public shared
-repository. The current `yuzuyuzuyu` policy rejects fine-grained PATs with a
-lifetime longer than 366 days. An upstream lookup succeeding does not prove this
-organization lookup will succeed. Use a compliant expiry; if regenerating changes
-the token value, replace `RENOVATE_GITHUB_LOOKUP_TOKEN` in every consumer using it.
+repository. GitHub defaults to a maximum lifetime of 366 days for fine-grained
+PATs. To permit a non-expiring lookup token, the organization owner must remove
+that maximum-lifetime requirement in Personal access tokens settings. An upstream
+lookup succeeding does not prove organization access works; rerun the credential
+check after changing either the token or its policy. Changing only the policy
+does not require replacing the stored secret. If regenerating changes the token
+value, replace `RENOVATE_GITHUB_LOOKUP_TOKEN` in every consumer using it.
