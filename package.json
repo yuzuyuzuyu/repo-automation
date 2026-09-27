@@ -3,5 +3,5 @@
   "private": true,
   "type": "module",
   "scripts": { "test": "node tests/renovate.mjs" },
-  "devDependencies": { "renovate": "44.48.1" }
+  "devDependencies": { "renovate": "44.112.3" }
 }
