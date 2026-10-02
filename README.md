@@ -61,9 +61,18 @@ GitHub's **Allow auto-merge** setting. The runner fails its preflight if that
 protection is missing. Private repositories currently use daily bot-managed
 merges and pass `native-automerge: false` because their plan lacks those rulesets.
 
-The `renovate-config` input is trusted operator configuration, not PR input. Only
-convex-googly-auth currently supplies it, to allow its exact changeset-generation
-command. Other consumers use the empty default.
+The `renovate-config` input is trusted operator configuration, not PR input.
+Consumers use it for local needs such as convex-googly-auth's exact
+changeset-generation command allowlist.
+
+The runner sets `RENOVATE_DOCKER_MAX_PAGES=10` centrally. Docker Hub rejects
+anonymous tag listings beyond 1,000 entries; requesting another page makes
+Renovate fall back to registry data without release timestamps, which blocks
+release-age checks indefinitely. The cap retains the 1,000 most recently updated
+Docker Hub tags per image. Reassess it if a consumer starts tracking tags outside
+that window. Keep this shared default in the runner, not in each consumer's
+`renovate-config` or the repository presets: `dockerMaxPages` is a self-hosted
+Renovate option. Release-age and CI requirements still apply.
 
 For security scans, retain permissions for contents, actions, issues, packages,
 pull requests, checks and statuses from the existing wrapper. Set `upload-sarif`
@@ -101,6 +110,18 @@ tracks preset tags. Consumers receive normal dependency PRs, with their usual
 release-age and CI policies. Never use a floating `main` or movable `v1` reference
 for privileged actions. Roll back by restoring the previous action SHA and
 preset version together; old releases remain available.
+
+Merging shared code alone does not update consumers: release publication is a
+manual workflow dispatch, then each consumer's scheduled Renovate run proposes
+the new pinned references. The `Repository automation` group in `default.json`
+groups action and preset updates. Normal release-age and merge requirements
+still apply; consumers do not switch immediately when the release is published.
+
+Consumers pinned to `v1.0.0` may temporarily pass `dockerMaxPages: 10` themselves.
+Keep that workaround until their runner SHA advances to a release containing the
+central cap. Remove the duplicate setting with or after that update, preserving
+any other `renovate-config` entries (especially command allowlists). Renovate
+updates references automatically; it does not remove these temporary overrides.
 
 ## Bootstrapping this repository
 

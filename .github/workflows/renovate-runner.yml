@@ -64,6 +64,9 @@ jobs:
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_PLATFORM: github
+          # Docker Hub rejects anonymous pagination beyond 1,000 tags. Stay
+          # within 10 pages to retain timestamps for release-age checks.
+          RENOVATE_DOCKER_MAX_PAGES: '10'
           LOG_LEVEL: ${{ inputs.log_level || 'info' }}
           RENOVATE_ONBOARDING: 'false'
           RENOVATE_DRY_RUN: ${{ inputs.dry-run && 'full' || '' }}
