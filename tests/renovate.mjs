@@ -38,7 +38,7 @@ const notes = ['age-3-days', 'age-7-days'].map((name) => ({ extends: [preset(nam
 export function policy(profile, exceptions = []) {
   return {
     extends: [preset(profile)],
-    packageRules: [...rules.map((name) => ({ extends: [preset(name)] })), ...exceptions, ...notes],
+    packageRules: [...rules.map((name) => ({ extends: [preset(name)] })), ...exceptions, { extends: [preset('automation-updates')] }, ...notes],
   };
 }
 async function evaluate(config, overrides = {}) {
@@ -72,5 +72,23 @@ assert.equal(publicConfig.statusCheckWhen.artifactError, 'always');
 assert.equal(publicConfig.internalChecksFilter, 'strict');
 // All references in a consumer can advance together, including the public/private preset.
 const matcher = new RegExp(publicConfig.customManagers.find((m) => m.depNameTemplate === repository).matchStrings[0], 'g');
-assert.deepEqual([...JSON.stringify(policy('public')).matchAll(matcher)].map((m) => m.groups.currentValue), Array(9).fill('v1.0.0'));
+assert.deepEqual([...JSON.stringify(policy('public')).matchAll(matcher)].map((m) => m.groups.currentValue), Array(10).fill('v1.0.0'));
 console.log('Renovate: recursive presets, rule order, release ages, lockfile exemption, manual holds and version tracking passed.');
+
+// The shared exception runs after general and local rules, including majors.
+for (const profile of ['public', 'private']) {
+  const config = await check(policy(profile, [{ matchDatasources: ['github-tags'], minimumReleaseAge: '7 days' }]));
+  for (const manager of ['github-actions', 'custom.regex', 'renovate-config']) {
+    for (const updateType of ['patch', 'minor', 'major', 'digest', 'pinDigest']) {
+      const effective = await evaluate(config, {
+        manager, datasource: 'github-tags', updateType,
+        packageName: repository, depName: repository,
+      });
+      assert.equal(effective.minimumReleaseAge, null);
+      assert.equal(effective.prBodyNotes, undefined);
+      assert.equal(effective.automerge, !(manager === 'github-actions' && ['digest', 'pinDigest'].includes(updateType)));
+    }
+  }
+  assert.equal((await evaluate(config, { datasource: 'github-tags' })).minimumReleaseAge, '7 days');
+}
+console.log('Shared automation updates: no age delay, unrelated ages and action digest review preserved.');
