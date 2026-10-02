@@ -1,0 +1,5 @@
+{
+  "description": "Apply after general rules: shared automation fixes need no release-age delay; CI and action digest review still apply",
+  "matchPackageNames": ["yuzuyuzuyu/repo-automation"],
+  "minimumReleaseAge": null
+}

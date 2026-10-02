@@ -99,29 +99,38 @@ strict checks that caught the previous consumer CI failure. Policy tests use the
 actual pinned Renovate engine, including recursive preset resolution and package
 rule evaluation. The engine container and test dependency update in one PR.
 
-After merging a change and passing main CI, run **Release shared automation**
-with a new semantic version such as `v1.1.0`. It checks the selected revision is
-current and tested, creates a new tag and publishes release notes. It refuses to
-move an existing tag. Breaking action inputs or policy contracts require a major
-version; preserve workflow/check names and SARIF categories when compatible.
+After successful push CI on the current default-branch revision, **Release
+shared automation** automatically publishes the next patch version when shared
+actions, controller code, the Renovate runner, or root policy presets changed
+since the last published release. Documentation, tests, release tooling and this
+repository's own dependency bookkeeping do not trigger releases. This prevents
+its own Renovate preset updates from creating a release loop.
+
+PR CI never publishes. Stale revisions and failed or unfinished CI cannot
+publish. Tags are immutable, repeat successful runs do nothing, and a retry after
+tag creation resumes publishing that same tag. Manual dispatch remains available
+for explicit minor/major versions or recovery; an empty version uses the automatic
+patch policy. Breaking action inputs or policy contracts require an explicit
+major version. Preserve workflow/check names and SARIF categories when compatible.
 
 Renovate tracks GitHub Action references and the custom manager in `default.json`
-tracks preset tags. Consumers receive normal dependency PRs, with their usual
-release-age and CI policies. Never use a floating `main` or movable `v1` reference
-for privileged actions. Roll back by restoring the previous action SHA and
-preset version together; old releases remain available.
+tracks preset tags. The `Repository automation` group keeps these updates
+together. Consumers must include the `automation-updates` rule preset after
+general/local rules and before the age-note presets. It exempts only
+`yuzuyuzuyu/repo-automation` from release-age delays, including major versions;
+CI and the manual review rule for moved action tags still apply. Other packages
+retain their existing age requirements. Consumers discover releases on their
+next Renovate run; release publication does not dispatch consumer workflows.
 
-Merging shared code alone does not update consumers: release publication is a
-manual workflow dispatch, then each consumer's scheduled Renovate run proposes
-the new pinned references. The `Repository automation` group in `default.json`
-groups action and preset updates. Normal release-age and merge requirements
-still apply; consumers do not switch immediately when the release is published.
+Never use a floating `main` or movable `v1` reference for privileged actions.
+Roll back by restoring the previous action SHA and preset version together; old
+releases remain available. A consumer pinned to an older release needs a one-time
+reference update before it can use a new shared rule preset.
 
 Consumers pinned to `v1.0.0` may temporarily pass `dockerMaxPages: 10` themselves.
-Keep that workaround until their runner SHA advances to a release containing the
-central cap. Remove the duplicate setting with or after that update, preserving
-any other `renovate-config` entries (especially command allowlists). Renovate
-updates references automatically; it does not remove these temporary overrides.
+Remove this duplicate setting with or after updating to a release containing the
+central cap, preserving other `renovate-config` entries such as command allowlists.
+Renovate updates references automatically; it does not remove temporary overrides.
 
 ## Bootstrapping this repository
 
