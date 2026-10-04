@@ -9,7 +9,7 @@ inputs:
     default: ''
   trivy-version:
     description: Pinned Trivy engine
-    default: v0.74.0
+    default: v0.75.0
 runs:
   using: composite
   steps:
