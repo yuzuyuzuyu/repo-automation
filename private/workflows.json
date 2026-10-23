@@ -1,0 +1,32 @@
+{
+  "yuzuyu": {
+    "renovate_cron": "23 16 * * 0,3",
+    "watchdog_cron": "11 7 * * 1",
+    "pin_cron": "13 8 * * 1",
+    "workflows": [
+      "CI",
+      "Renovate",
+      "Maintenance security scan",
+      "Site / Audit",
+      "Synchronize infrastructure dependency pins"
+    ]
+  },
+  "passwordreset": {
+    "renovate_cron": "37 16 * * 0,3",
+    "watchdog_cron": "41 7 * * 1",
+    "workflows": [
+      "Build and publish image",
+      "Renovate",
+      "Maintenance security scan"
+    ]
+  },
+  "webhook-image-updater": {
+    "renovate_cron": "43 16 * * 0,3",
+    "watchdog_cron": "51 7 * * 1",
+    "workflows": [
+      "Test and publish image",
+      "Renovate",
+      "Maintenance security scan"
+    ]
+  }
+}

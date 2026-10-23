@@ -1,0 +1,93 @@
+{
+  "description": "Opt-in budget policy for private repositories; public and existing private presets are unchanged.",
+  "extends": [
+    "./private"
+  ],
+  "platformAutomerge": false,
+  "schedule": [
+    "before 6am on monday",
+    "before 6am on thursday"
+  ],
+  "updateNotScheduled": false,
+  "prConcurrentLimit": 3,
+  "internalChecksFilter": "strict",
+  "lockFileMaintenance": {
+    "schedule": [
+      "before 6am on monday"
+    ],
+    "updateNotScheduled": false
+  },
+  "vulnerabilityAlerts": {
+    "schedule": [
+      "at any time"
+    ],
+    "updateNotScheduled": true
+  },
+  "packageRules": [
+    {
+      "matchManagers": [
+        "npm"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "Private npm maintenance",
+      "matchPackageNames": [
+        "!yuzuyuzuyu/repo-automation"
+      ]
+    },
+    {
+      "matchManagers": [
+        "pip-compile"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "Private Python maintenance",
+      "matchPackageNames": [
+        "!yuzuyuzuyu/repo-automation"
+      ]
+    },
+    {
+      "matchManagers": [
+        "ansible-galaxy"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "Private Ansible collections",
+      "matchPackageNames": [
+        "!yuzuyuzuyu/repo-automation"
+      ]
+    },
+    {
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "Private Docker base images",
+      "matchPackageNames": [
+        "!yuzuyuzuyu/repo-automation"
+      ]
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "Private action versions",
+      "matchPackageNames": [
+        "!yuzuyuzuyu/repo-automation"
+      ]
+    }
+  ]
+}

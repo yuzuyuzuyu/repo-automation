@@ -175,3 +175,9 @@ lookup succeeding does not prove organization access works; rerun the credential
 check after changing either the token or its policy. Changing only the policy
 does not require replacing the stored secret. If regenerating changes the token
 value, replace `RENOVATE_GITHUB_LOOKUP_TOKEN` in every consumer using it.
+
+## Private Actions budget
+
+Private repositories can opt into [the private Actions budget](docs/private-actions.md)
+for batched dependency updates, scoped CI, and generated maintenance schedules.
+Existing public and private presets retain their behavior.

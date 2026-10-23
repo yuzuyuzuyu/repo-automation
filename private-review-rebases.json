@@ -1,0 +1,7 @@
+{
+  "description": "Apply last in packageRules: human-reviewed updates only rebase for conflicts; automerged updates keep fresh-base CI.",
+  "matchJsonata": [
+    "automerge = false"
+  ],
+  "rebaseWhen": "conflicted"
+}

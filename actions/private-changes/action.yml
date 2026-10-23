@@ -1,0 +1,36 @@
+name: Private CI changes
+description: Select private CI checks from the complete Git diff, defaulting to full checks when history is unavailable.
+inputs:
+  profile:
+    description: Profile in the shared private CI configuration
+    required: true
+outputs:
+  tests:
+    description: Run application or repository tests
+    value: ${{ steps.scope.outputs.tests }}
+  ansible:
+    description: Run full Ansible validation
+    value: ${{ steps.scope.outputs.ansible }}
+  upgallery:
+    description: Run the ownership integration test
+    value: ${{ steps.scope.outputs.upgallery }}
+  pyburlybot:
+    description: Run pyburlybot tests
+    value: ${{ steps.scope.outputs.pyburlybot }}
+  image:
+    description: Build the image
+    value: ${{ steps.scope.outputs.image }}
+  pins:
+    description: Synchronize infrastructure pins
+    value: ${{ steps.scope.outputs.pins }}
+runs:
+  using: composite
+  steps:
+    - name: Select checks from changed paths
+      id: scope
+      shell: bash
+      run: python3 "$AUTOMATION_PATH/../../src/private_ci.py"
+      env:
+        AUTOMATION_PATH: ${{ github.action_path }}
+        PRIVATE_CI_PROFILE: ${{ inputs.profile }}
+        GH_TOKEN: ${{ github.token }}

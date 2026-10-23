@@ -21,6 +21,7 @@ def affects_consumers(filename: str) -> bool:
     path = PurePosixPath(filename)
     return (
         filename.startswith("actions/")
+        or filename.startswith("private/")
         or (filename.startswith("src/") and filename != "src/release.py")
         or filename == ".github/workflows/renovate-runner.yml"
         or (

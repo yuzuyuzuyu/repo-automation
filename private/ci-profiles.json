@@ -1,0 +1,239 @@
+{
+  "yuzuyu": {
+    "checks": [
+      "tests",
+      "ansible",
+      "upgallery",
+      "pyburlybot"
+    ],
+    "ignore": [
+      "*.md",
+      "**/*.md",
+      "docs/**",
+      ".github/MAINTENANCE.md",
+      "renovate.json",
+      ".github/maintenance.json",
+      ".github/dependabot.yml"
+    ],
+    "rules": [
+      {
+        "patterns": [
+          "inventory/**",
+          "site.yml",
+          "ansible.cfg",
+          ".ansible-lint",
+          ".yamllint",
+          "requirements*",
+          "scripts/**",
+          "filter_plugins/**",
+          "library/**",
+          "playbooks/server/**",
+          "playbooks/services/common/**",
+          ".github/workflows/**"
+        ],
+        "checks": [
+          "tests",
+          "ansible",
+          "upgallery",
+          "pyburlybot"
+        ]
+      },
+      {
+        "patterns": [
+          "playbooks/services/pyburlybot/container/**",
+          "playbooks/services/pyburlybot/tests/**"
+        ],
+        "checks": [
+          "tests",
+          "pyburlybot"
+        ]
+      },
+      {
+        "patterns": [
+          "playbooks/services/pyburlybot/**"
+        ],
+        "checks": [
+          "tests",
+          "ansible",
+          "pyburlybot"
+        ]
+      },
+      {
+        "patterns": [
+          "playbooks/services/upgallery/**",
+          "tests/integration/upgallery*"
+        ],
+        "checks": [
+          "tests",
+          "ansible",
+          "upgallery"
+        ]
+      },
+      {
+        "patterns": [
+          "playbooks/services/**"
+        ],
+        "checks": [
+          "tests",
+          "ansible"
+        ]
+      },
+      {
+        "patterns": [
+          "tests/**"
+        ],
+        "checks": [
+          "tests"
+        ]
+      }
+    ]
+  },
+  "passwordreset": {
+    "checks": [
+      "tests",
+      "image"
+    ],
+    "ignore": [
+      "*.md",
+      "**/*.md",
+      "docs/**",
+      ".github/MAINTENANCE.md",
+      "renovate.json",
+      ".github/maintenance.json",
+      ".github/dependabot.yml"
+    ],
+    "rules": [
+      {
+        "patterns": [
+          ".github/workflows/docker.yml"
+        ],
+        "checks": [
+          "tests",
+          "image"
+        ]
+      },
+      {
+        "patterns": [
+          ".github/**"
+        ],
+        "checks": [
+          "tests"
+        ]
+      },
+      {
+        "patterns": [
+          "app/**",
+          "helper/**",
+          "Dockerfile",
+          ".dockerignore",
+          ".nvmrc",
+          "rust-toolchain*"
+        ],
+        "checks": [
+          "tests",
+          "image"
+        ]
+      }
+    ]
+  },
+  "webhook-image-updater": {
+    "checks": [
+      "tests",
+      "image"
+    ],
+    "ignore": [
+      "*.md",
+      "**/*.md",
+      "docs/**",
+      ".github/MAINTENANCE.md",
+      "renovate.json",
+      ".github/maintenance.json",
+      ".github/dependabot.yml",
+      "examples/**"
+    ],
+    "rules": [
+      {
+        "patterns": [
+          ".github/workflows/docker.yml"
+        ],
+        "checks": [
+          "tests",
+          "image"
+        ]
+      },
+      {
+        "patterns": [
+          ".github/**",
+          "Makefile",
+          ".golangci*",
+          "**/*_test.go"
+        ],
+        "checks": [
+          "tests"
+        ]
+      },
+      {
+        "patterns": [
+          "cmd/**",
+          "internal/**",
+          "go.mod",
+          "go.sum",
+          "Dockerfile",
+          ".dockerignore"
+        ],
+        "checks": [
+          "tests",
+          "image"
+        ]
+      }
+    ]
+  },
+  "dependency-pins": {
+    "checks": [
+      "pins"
+    ],
+    "ignore": [
+      "*.md",
+      "**/*.md",
+      "docs/**",
+      ".github/MAINTENANCE.md",
+      "renovate.json",
+      ".github/maintenance.json",
+      ".github/dependabot.yml"
+    ],
+    "rules": [
+      {
+        "patterns": [
+          "playbooks/services/nginx/**",
+          "playbooks/services/mariadb/**",
+          "playbooks/services/mumble/**",
+          "playbooks/services/znc/**",
+          "playbooks/services/monitoring/**",
+          "playbooks/server/**",
+          "playbooks/services/common/**",
+          "inventory/**",
+          "filter_plugins/**",
+          "library/**",
+          "requirements*",
+          "scripts/**",
+          "ansible.cfg",
+          ".github/workflows/_ansible-run.yml",
+          ".github/workflows/dependency-pins.yml"
+        ],
+        "checks": [
+          "pins"
+        ]
+      },
+      {
+        "patterns": [
+          "playbooks/services/**",
+          "tests/**",
+          ".github/**",
+          ".ansible-lint",
+          ".yamllint"
+        ],
+        "checks": []
+      }
+    ]
+  }
+}

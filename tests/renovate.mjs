@@ -33,7 +33,8 @@ export async function check(config) {
   assert.deepEqual(errors, []);
   return resolved;
 }
-await check(JSON.parse(fs.readFileSync(path.join(root, 'renovate.json'), 'utf8')));
+// Resolve this checkout's self-configuration through the same local preset cache.
+await check(JSON.parse(fs.readFileSync(path.join(root, 'renovate.json'), 'utf8').replace(/(github>yuzuyuzuyu\/repo-automation(?::[a-z0-9-]+)?#)v\d+\.\d+\.\d+/g, '$1v1.0.0')));
 const rules = ['non-major', 'major', 'pre-one', 'action-digest-review', 'renovate-engine', 'node-runtime'];
 const notes = ['age-3-days', 'age-7-days'].map((name) => ({ extends: [preset(name)] }));
 export function policy(profile, exceptions = []) {
@@ -136,3 +137,45 @@ for (const profile of ['public', 'private']) {
   assert.equal(checkMinimumReleaseAge(strict, undefined).isPending, true);
 }
 console.log('Reviewed Docker digests: known release ages, missing-timestamp fallback, unrelated images and local overrides passed for both profiles.');
+
+// Private budgeting is opt-in; verify the effective policy after consumer overrides.
+const budgetPolicy = policy('private-budget', [
+  { matchPackageNames: ['mariadb'], matchUpdateTypes: ['major'], automerge: false },
+  { matchPackageNames: ['go', 'golang'], groupName: 'Go toolchain' },
+]);
+budgetPolicy.packageRules.push({ extends: [preset('private-review-rebases')] });
+const budget = await check(budgetPolicy);
+assert.equal(budget.prConcurrentLimit, 3);
+assert.equal(budget.platformAutomerge, false);
+assert.equal(budget.updateNotScheduled, false);
+assert.equal(budget.internalChecksFilter, 'strict');
+assert.equal(budget.vulnerabilityAlerts.updateNotScheduled, true);
+assert.equal(budget.lockFileMaintenance.automerge, true);
+for (const updateType of ['patch', 'minor']) {
+  const effective = await evaluate(budget, { updateType });
+  assert.equal(effective.groupName, 'Private npm maintenance');
+  assert.equal(effective.rebaseWhen, 'behind-base-branch');
+  assert.equal(effective.automerge, true);
+}
+assert.equal((await evaluate(budget, { updateType: 'major' })).groupName, undefined);
+for (const updateType of ['digest', 'pinDigest']) {
+  const effective = await evaluate(budget, { manager: 'github-actions', updateType });
+  assert.equal(effective.automerge, false);
+  assert.equal(effective.rebaseWhen, 'conflicted');
+  assert.equal(effective.groupName, undefined);
+}
+const database = await evaluate(budget, { datasource: 'docker', packageName: 'mariadb', depName: 'mariadb', updateType: 'major' });
+assert.equal(database.automerge, false);
+assert.equal(database.rebaseWhen, 'conflicted');
+const go = await evaluate(budget, { manager: 'dockerfile', datasource: 'docker', packageName: 'golang', depName: 'golang' });
+assert.equal(go.groupName, 'Go toolchain');
+for (const profile of ['public', 'private']) {
+  const original = await check(policy(profile));
+  assert.equal(original.updateNotScheduled, undefined);
+  assert.equal((await evaluate(original)).groupName, undefined);
+  assert.equal((await evaluate(original, { manager: 'github-actions', updateType: 'digest' })).rebaseWhen, 'behind-base-branch');
+}
+console.log('Private budget: grouping, manual-review rebases, fresh-base automerge, security exceptions and unchanged existing profiles passed.');
+
+const privateAutomation = await evaluate(budget, { manager: 'github-actions', datasource: 'github-tags', packageName: repository, depName: repository });
+assert.equal(privateAutomation.groupName, 'Repository automation');

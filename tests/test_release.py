@@ -25,6 +25,8 @@ class ReleaseTests(unittest.TestCase):
             "src/maintenance.py",
             ".github/workflows/renovate-runner.yml",
             "automation-updates.json",
+            "private/ci-profiles.json",
+            "private/workflows.json",
         ]:
             with self.subTest(filename=filename):
                 self.assertTrue(affects_consumers(filename))
