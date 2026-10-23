@@ -19,6 +19,25 @@ The daily watchdog raises one issue for updates stalled
 longer than eight days, with 48 hours of grace after a new bot commit, and
 closes it when they recover.
 
+The shared default temporarily sets `minimumReleaseAgeBehaviour: timestamp-optional`
+for `digest` updates of the reviewed Docker Hub images `docker/dockerfile` and
+`python`. [Renovate issue #45236](https://github.com/renovatebot/renovate/issues/45236)
+causes the branch stability check to lose the digest timestamp already checked
+during lookup, leaving mature updates pending indefinitely. Known publication
+timestamps still enforce the normal release-age delay. If the actual publication
+timestamp is unavailable, these two images' digest updates can proceed. Other
+images, Docker version upgrades, initial digest pins and other datasources retain
+the required-timestamp behavior. Artifact generation, CI, branch protection and
+configured review requirements still apply. Consumers can override the exception
+with a later package rule requiring timestamps.
+
+Remove this default package rule and its workaround-specific policy tests after
+upgrading the shared runner to a Renovate release containing the upstream fix
+(proposed in [PR #46645](https://github.com/renovatebot/renovate/pull/46645)) and
+verifying that mature digests pass while young and genuinely missing timestamps
+remain blocked under `timestamp-required`. Publish the shared policy change;
+consumers receive it when Renovate updates their pinned preset versions.
+
 Security scans run daily and after image builds. All severities remain in the
 reports; high/critical findings start a 72-hour remediation window. A matching green or
 pending Renovate update extends that window to eight days; exposed credentials

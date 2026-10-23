@@ -8,6 +8,7 @@ import { resolveConfigPresets } from 'renovate/dist/config/presets/index.js';
 import { massageConfig } from 'renovate/dist/config/massage.js';
 import { validateConfig } from 'renovate/dist/config/validation.js';
 import { applyPackageRules } from 'renovate/dist/util/package-rules/index.js';
+import { checkMinimumReleaseAge } from 'renovate/dist/util/minimum-release-age.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repository = 'yuzuyuzuyu/repo-automation';
@@ -92,3 +93,46 @@ for (const profile of ['public', 'private']) {
   assert.equal((await evaluate(config, { datasource: 'github-tags' })).minimumReleaseAge, '7 days');
 }
 console.log('Shared automation updates: no age delay, unrelated ages and action digest review preserved.');
+
+// Work around the reviewed images' missing branch-stage digest timestamps.
+// Remove with the policy exception after upgrading past renovatebot/renovate#45236.
+const matureTimestamp = new Date(Date.now() - 14 * 86400000).toISOString();
+const youngTimestamp = new Date().toISOString();
+for (const profile of ['public', 'private']) {
+  const config = await check(policy(profile));
+  for (const [datasource, packageName, updateType, behaviour] of [
+    ['docker', 'docker/dockerfile', 'digest', 'timestamp-optional'],
+    ['docker', 'python', 'digest', 'timestamp-optional'],
+    ['docker', 'node', 'digest', 'timestamp-required'],
+    ['docker', 'ghcr.io/example/python', 'digest', 'timestamp-required'],
+    ['docker', 'python', 'pinDigest', 'timestamp-required'],
+    ['docker', 'python', 'patch', 'timestamp-required'],
+    ['docker', 'python', 'minor', 'timestamp-required'],
+    ['docker', 'python', 'major', 'timestamp-required'],
+    ['github-tags', 'python', 'digest', 'timestamp-required'],
+    ['npm', 'python', 'patch', 'timestamp-required'],
+  ]) {
+    const effective = await evaluate(config, {
+      manager: datasource === 'docker' ? 'dockerfile' : 'npm',
+      datasource, packageName, depName: packageName, updateType,
+      minimumReleaseAgeBehaviour: 'timestamp-required',
+    });
+    assert.equal(effective.minimumReleaseAgeBehaviour, behaviour);
+    assert.equal(effective.minimumReleaseAge, updateType === 'major' ? '7 days' : '3 days');
+    assert.equal(checkMinimumReleaseAge(effective, matureTimestamp).isPending, false);
+    assert.equal(checkMinimumReleaseAge(effective, youngTimestamp).isPending, true);
+    assert.equal(checkMinimumReleaseAge(effective, undefined).isPending, behaviour === 'timestamp-required');
+  }
+  // Consumers can retain a stricter policy through a later local exception.
+  const strictConfig = await check(policy(profile, [{
+    matchDatasources: ['docker'],
+    matchPackageNames: ['python'],
+    matchUpdateTypes: ['digest'],
+    minimumReleaseAgeBehaviour: 'timestamp-required',
+  }]));
+  const strict = await evaluate(strictConfig, {
+    datasource: 'docker', packageName: 'python', depName: 'python', updateType: 'digest',
+  });
+  assert.equal(checkMinimumReleaseAge(strict, undefined).isPending, true);
+}
+console.log('Reviewed Docker digests: known release ages, missing-timestamp fallback, unrelated images and local overrides passed for both profiles.');

@@ -39,6 +39,20 @@
         "yuzuyuzuyu/repo-automation"
       ],
       "groupName": "Repository automation"
+    },
+    {
+      "description": "Temporary timestamp workaround for reviewed docker/dockerfile and python digests: https://github.com/renovatebot/renovate/issues/45236; remove after upgrading to a verified upstream fix",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "docker/dockerfile",
+        "python"
+      ],
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
     }
   ]
 }
