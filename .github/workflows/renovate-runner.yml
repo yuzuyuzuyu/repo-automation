@@ -112,6 +112,8 @@ jobs:
           RENOVATE_CANDIDATE_STATE: ${{ runner.temp }}/renovate-candidates/state.json
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_PLATFORM: github
+          # An aborted repository must fail the job, including host/adapter errors.
+          RENOVATE_EXIT_CODE_FOR_ERRORS: 'true'
           # Docker Hub rejects anonymous pagination beyond 1,000 tags. Stay
           # within 10 pages to retain timestamps for release-age checks.
           RENOVATE_DOCKER_MAX_PAGES: '10'

@@ -100,19 +100,26 @@ try {
   for (const custom of [false, true]) {
     now = Date.parse('2026-03-01T00:00:00Z');
     const base = custom ? 'qemu-v10.2.3' : '3.14.7-slim-trixie';
-    const patch = custom ? 'qemu-v10.2.4' : '3.14.8-slim-trixie';
+    const patch = custom ? 'qemu-v10.2.6' : '3.14.10-slim-trixie';
+    const olderPatch = custom ? 'qemu-v10.2.4' : '3.14.8-slim-trixie';
+    const middlePatch = custom ? 'qemu-v10.2.5' : '3.14.9-slim-trixie';
     const major = custom ? 'qemu-v11.0.0' : '4.0.0-slim-trixie';
     const packageName = custom ? 'tonistiigi/binfmt' : 'python';
     const versions = custom ? getVersioning(QEMU_VERSIONING) : versioning;
     const candidates = new CandidateStore(null, () => now);
     const registry = Object.create(source);
-    const tags = { [base]: C, [patch]: A, [major]: B };
+    // Multiple versions in deliberately unsorted order exercise the native
+    // comparator's receiver and selection of only the newest two patches.
+    const tags = { [base]: C, [patch]: A, [olderPatch]: C, [major]: B, [middlePatch]: C };
     registry.getReleases = async () => ({ releases: Object.keys(tags).map((version) => ({ version })) });
     registry.getDigest = async (_config, tag) => tag.startsWith('sha256:') ? tag : tags[tag];
     const wrapped = retainedDocker(registry, candidates, { registryRepository: getRegistryRepository, versioning, versioningFor: () => versions, ownedImages });
     datasources.set('docker', wrapped);
     const options = { currentValue: base, packageName, depName: packageName, versioning: custom ? QEMU_VERSIONING : 'docker' };
     assert.deepEqual((await lookup(options)).updates, []);
+    const observed = Object.keys(candidates.state.streams).map((key) => JSON.parse(key)[2]);
+    assert(observed.includes(patch) && observed.includes(middlePatch));
+    assert(!observed.includes(olderPatch), 'Only the newest two patches are observed');
     now += SOAK_MS;
     const patches = (await lookup(options)).updates;
     assert.equal(patches.find((u) => u.updateType === 'patch')?.newDigest, A);

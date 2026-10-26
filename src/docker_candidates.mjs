@@ -154,7 +154,7 @@ export function retainedDocker(original, store, { registryRepository, versioning
         groups.set(group, versions);
       }
       for (const versions of groups.values()) {
-        versions.sort(versionsApi.sortVersions);
+        versions.sort((left, right) => versionsApi.sortVersions(left, right));
         versions.slice(-2).forEach((version) => toObserve.add(version));
       }
     }
