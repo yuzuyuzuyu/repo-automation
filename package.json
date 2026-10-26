@@ -6,6 +6,6 @@
     "test": "node tests/renovate.mjs && node tests/docker_candidates.mjs"
   },
   "devDependencies": {
-    "renovate": "44.178.1"
+    "renovate": "44.181.0"
   }
 }
