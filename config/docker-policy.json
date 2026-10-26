@@ -1,0 +1,51 @@
+{
+  "description": "Runtime-only policy: load only together with the retained Docker datasource",
+  "packageRules": [
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "minimumReleaseAge": "3 days",
+      "internalChecksFilter": "strict"
+    },
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "The retained datasource enforces age even when Renovate loses the digest's branch-stage timestamp",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchUpdateTypes": [
+        "digest",
+        "pinDigest"
+      ],
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
+    },
+    {
+      "description": "Exact fleet-owned image allowlist: dependencies soak upstream; published application builds need no second delay",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/clammet/pyburlybot",
+        "ghcr.io/clammet/upgallery/storage",
+        "ghcr.io/clammet/upgallery/web-dist",
+        "ghcr.io/whenwhenwhenwhenwhen/when",
+        "ghcr.io/clammet/repomonitor",
+        "ghcr.io/clammet/showmeplease",
+        "ghcr.io/yuzuyuzuyu/passwordreset",
+        "ghcr.io/yuzuyuzuyu/codex-cli",
+        "ghcr.io/yuzuyuzuyu/webhook-image-updater",
+        "ghcr.io/ckx/console-buffet"
+      ],
+      "minimumReleaseAge": null
+    }
+  ]
+}

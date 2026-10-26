@@ -7,8 +7,11 @@ import { init, set } from 'renovate/dist/util/cache/memory/index.js';
 import { resolveConfigPresets } from 'renovate/dist/config/presets/index.js';
 import { massageConfig } from 'renovate/dist/config/massage.js';
 import { validateConfig } from 'renovate/dist/config/validation.js';
+import { extractPackageFile as extractRegex } from 'renovate/dist/modules/manager/custom/regex/index.js';
+import { extractPackageFile as extractActions } from 'renovate/dist/modules/manager/github-actions/extract.js';
+import { GlobalConfig } from 'renovate/dist/config/global.js';
+import { QEMU_VERSIONING } from '../src/docker_candidates.mjs';
 import { applyPackageRules } from 'renovate/dist/util/package-rules/index.js';
-import { checkMinimumReleaseAge } from 'renovate/dist/util/minimum-release-age.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repository = 'yuzuyuzuyu/repo-automation';
@@ -95,48 +98,25 @@ for (const profile of ['public', 'private']) {
 }
 console.log('Shared automation updates: no age delay, unrelated ages and action digest review preserved.');
 
-// Work around the reviewed images' missing branch-stage digest timestamps.
-// Remove with the policy exception after upgrading past renovatebot/renovate#45236.
-const matureTimestamp = new Date(Date.now() - 14 * 86400000).toISOString();
-const youngTimestamp = new Date().toISOString();
-for (const profile of ['public', 'private']) {
-  const config = await check(policy(profile));
-  for (const [datasource, packageName, updateType, behaviour] of [
-    ['docker', 'docker/dockerfile', 'digest', 'timestamp-optional'],
-    ['docker', 'python', 'digest', 'timestamp-optional'],
-    ['docker', 'node', 'digest', 'timestamp-required'],
-    ['docker', 'ghcr.io/example/python', 'digest', 'timestamp-required'],
-    ['docker', 'python', 'pinDigest', 'timestamp-required'],
-    ['docker', 'python', 'patch', 'timestamp-required'],
-    ['docker', 'python', 'minor', 'timestamp-required'],
-    ['docker', 'python', 'major', 'timestamp-required'],
-    ['github-tags', 'python', 'digest', 'timestamp-required'],
-    ['npm', 'python', 'patch', 'timestamp-required'],
-  ]) {
-    const effective = await evaluate(config, {
-      manager: datasource === 'docker' ? 'dockerfile' : 'npm',
-      datasource, packageName, depName: packageName, updateType,
-      minimumReleaseAgeBehaviour: 'timestamp-required',
-    });
-    assert.equal(effective.minimumReleaseAgeBehaviour, behaviour);
-    assert.equal(effective.minimumReleaseAge, updateType === 'major' ? '7 days' : '3 days');
-    assert.equal(checkMinimumReleaseAge(effective, matureTimestamp).isPending, false);
-    assert.equal(checkMinimumReleaseAge(effective, youngTimestamp).isPending, true);
-    assert.equal(checkMinimumReleaseAge(effective, undefined).isPending, behaviour === 'timestamp-required');
-  }
-  // Consumers can retain a stricter policy through a later local exception.
-  const strictConfig = await check(policy(profile, [{
-    matchDatasources: ['docker'],
-    matchPackageNames: ['python'],
-    matchUpdateTypes: ['digest'],
-    minimumReleaseAgeBehaviour: 'timestamp-required',
-  }]));
-  const strict = await evaluate(strictConfig, {
-    datasource: 'docker', packageName: 'python', depName: 'python', updateType: 'digest',
-  });
-  assert.equal(checkMinimumReleaseAge(strict, undefined).isPending, true);
+// Timestamp fallback exists only inside the runner that retains exact candidates.
+const runtimePolicy = JSON.parse(fs.readFileSync(path.join(root, 'config/docker-policy.json'), 'utf8'));
+await check(runtimePolicy);
+for (const name of ['python', 'docker/dockerfile', 'node']) {
+  const effective = await evaluate(publicConfig, { datasource: 'docker', packageName: name, depName: name, updateType: 'digest', minimumReleaseAgeBehaviour: 'timestamp-required' });
+  assert.equal(effective.minimumReleaseAgeBehaviour, 'timestamp-required');
 }
-console.log('Reviewed Docker digests: known release ages, missing-timestamp fallback, unrelated images and local overrides passed for both profiles.');
+const runtime = await check({ ...policy('public'), packageRules: [...policy('public').packageRules, ...runtimePolicy.packageRules] });
+for (const name of runtimePolicy.packageRules.at(-1).matchPackageNames) {
+  for (const updateType of ['digest', 'pinDigest', 'patch', 'major']) {
+    assert.equal((await evaluate(runtime, { datasource: 'docker', packageName: name, depName: name, updateType })).minimumReleaseAge, null);
+  }
+}
+assert.equal((await evaluate(runtime, { datasource: 'docker', packageName: 'ghcr.io/attacker/pyburlybot', depName: 'ghcr.io/attacker/pyburlybot', updateType: 'digest' })).minimumReleaseAge, '3 days');
+assert.equal((await evaluate(runtime, { datasource: 'docker', packageName: 'python', depName: 'python', updateType: 'major' })).minimumReleaseAge, '7 days');
+const engineImage = JSON.parse(fs.readFileSync(path.join(root, 'config/renovate-image.json'))).image;
+const engineVersion = JSON.parse(fs.readFileSync(path.join(root, 'package.json'))).devDependencies.renovate;
+assert(engineImage.startsWith(`ghcr.io/renovatebot/renovate:${engineVersion}@sha256:`));
+console.log('Runtime Docker policy: retained-candidate gating, exact own-image exemptions and matching engine pins passed.');
 
 // Private budgeting is opt-in; verify the effective policy after consumer overrides.
 const budgetPolicy = policy('private-budget', [
@@ -179,3 +159,34 @@ console.log('Private budget: grouping, manual-review rebases, fresh-base automer
 
 const privateAutomation = await evaluate(budget, { manager: 'github-actions', datasource: 'github-tags', packageName: repository, depName: repository });
 assert.equal(privateAutomation.groupName, 'Repository automation');
+
+// Verify extraction, not just regex text: these inputs must become actual
+// Renovate dependencies, including implicit tools downloaded by pinned actions.
+const buildDigest = `sha256:${'a'.repeat(64)}`;
+const workflow = `jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/setup-buildx-action@${'b'.repeat(40)} # v4.4.1
+        with:
+          version: v0.38.1
+          # renovate: datasource=docker depName=moby/buildkit
+          driver-opts: image=moby/buildkit:v0.34.1@${buildDigest}
+      - uses: docker/setup-qemu-action@${'c'.repeat(40)} # v4.4.0
+        with:
+          # renovate: datasource=docker depName=tonistiigi/binfmt
+          image: tonistiigi/binfmt:qemu-v10.2.3@${buildDigest}
+`;
+const manager = publicConfig.customManagers.find((m) => m.matchStrings?.some((pattern) => pattern.includes('driver-opts')));
+const extracted = extractRegex(workflow, '.github/workflows/build.yml', manager).deps;
+assert.deepEqual(extracted.map(({ depName, currentValue, currentDigest }) => ({ depName, currentValue, currentDigest })), [
+  { depName: 'moby/buildkit', currentValue: 'v0.34.1', currentDigest: buildDigest },
+  { depName: 'tonistiigi/binfmt', currentValue: 'qemu-v10.2.3', currentDigest: buildDigest },
+]);
+GlobalConfig.set({ localDir: root });
+const actions = await extractActions(workflow, '.github/workflows/build.yml');
+assert(actions.deps.some((dep) => dep.packageName === 'docker/buildx' && dep.currentValue === 'v0.38.1'));
+const qemu = await evaluate(publicConfig, { datasource: 'docker', packageName: 'tonistiigi/binfmt', depName: 'tonistiigi/binfmt' });
+assert.equal(qemu.versioning, QEMU_VERSIONING);
+assert.equal((await evaluate(publicConfig, { manager: 'github-actions', datasource: 'node-version', packageName: 'actions/node-versions', depName: 'node' })).groupName, 'Node runtime');
+console.log('Buildx, BuildKit, QEMU and CI runtime dependency extraction/grouping passed.');

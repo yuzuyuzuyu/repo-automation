@@ -97,6 +97,9 @@ class SelectionTests(unittest.TestCase):
     def test_pin_scope_covers_updaters_templates_and_shared_dependencies(self):
         for filename in [
             "playbooks/services/monitoring/vars/service-vars.yml",
+            "playbooks/services/convex/vars/template-vars.yml",
+            "playbooks/services/when-convex/vars/service-vars.yml",
+            "playbooks/services/pyburlybot/vars/service-vars.yml",
             "playbooks/services/nginx/templates/update.sh.j2",
             "inventory/group_vars/all/main.yml",
             "requirements.txt",
@@ -108,7 +111,6 @@ class SelectionTests(unittest.TestCase):
                 "dependency-pins",
                 [
                     "tests/test_dependency_pins.py",
-                    "playbooks/services/pyburlybot/vars/service-vars.yml",
                 ],
             ),
             set(),

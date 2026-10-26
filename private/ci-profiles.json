@@ -218,7 +218,10 @@
           "scripts/**",
           "ansible.cfg",
           ".github/workflows/_ansible-run.yml",
-          ".github/workflows/dependency-pins.yml"
+          ".github/workflows/dependency-pins.yml",
+          "playbooks/services/convex/**",
+          "playbooks/services/*-convex/**",
+          "playbooks/services/pyburlybot/**"
         ],
         "checks": [
           "pins"

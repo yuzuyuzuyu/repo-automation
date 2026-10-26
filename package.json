@@ -2,6 +2,10 @@
   "name": "repo-automation",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node tests/renovate.mjs" },
-  "devDependencies": { "renovate": "44.178.1" }
+  "scripts": {
+    "test": "node tests/renovate.mjs && node tests/docker_candidates.mjs"
+  },
+  "devDependencies": {
+    "renovate": "44.178.1"
+  }
 }

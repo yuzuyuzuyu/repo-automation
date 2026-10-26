@@ -2,7 +2,8 @@
   "description": "Keep Node image, CI runtime, and Node types in one tested PR",
   "matchPackageNames": [
     "node",
-    "@types/node"
+    "@types/node",
+    "actions/node-versions"
   ],
   "groupName": "Node runtime"
 }

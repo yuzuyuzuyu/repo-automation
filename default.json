@@ -31,6 +31,15 @@
       ],
       "depNameTemplate": "yuzuyuzuyu/repo-automation",
       "datasourceTemplate": "github-tags"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)(?:\\.github/workflows/.*|actions/.*/action)\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>docker) depName=(?<depName>[^\\s]+)\\n\\s*(?:image|driver-opts):\\s*(?:image=)?[^\\s@]+:(?<currentValue>[^\\s@]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ]
     }
   ],
   "packageRules": [
@@ -41,18 +50,21 @@
       "groupName": "Repository automation"
     },
     {
-      "description": "Temporary timestamp workaround for reviewed docker/dockerfile and python digests: https://github.com/renovatebot/renovate/issues/45236; remove after upgrading to a verified upstream fix",
+      "matchPackageNames": [
+        "docker/buildx",
+        "moby/buildkit",
+        "tonistiigi/binfmt"
+      ],
+      "groupName": "Container build tools"
+    },
+    {
       "matchDatasources": [
         "docker"
       ],
       "matchPackageNames": [
-        "docker/dockerfile",
-        "python"
+        "tonistiigi/binfmt"
       ],
-      "matchUpdateTypes": [
-        "digest"
-      ],
-      "minimumReleaseAgeBehaviour": "timestamp-optional"
+      "versioning": "regex:^qemu-v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
     }
   ]
 }

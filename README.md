@@ -9,7 +9,7 @@ No submodules, vendored scripts or synchronization command are needed.
 
 | Component | Purpose |
 | --- | --- |
-| `.github/workflows/renovate-runner.yml` | App authentication, lookup token routing, keepalive, branch-protection preflight and pinned Renovate engine. |
+| `.github/workflows/renovate-runner.yml` | App authentication, lookup token routing, keepalive, branch-protection preflight, digest-pinned Renovate engine and retained Docker candidates. |
 | `actions/readiness` | Publish `Dependency update safety` from Renovate statuses on the exact PR head. No checkout or PR code execution. |
 | `actions/watchdog` | Check stalled updates and retry allowlisted workflow failures once. |
 | `actions/security-scan` | Install pinned Trivy, scan configured targets, reconcile issues, save reports/state, optionally upload SARIF and request a rebuild. |
@@ -74,6 +74,15 @@ that window. Keep this shared default in the runner, not in each consumer's
 `renovate-config` or the repository presets: `dockerMaxPages` is a self-hosted
 Renovate option. Release-age and CI requirements still apply.
 
+The retention runner requires default-branch invocation and `actions: write` for
+its observation artifact. It checks out the reusable workflow's own commit via
+GitHub.com's `job.workflow_repository` and `job.workflow_sha`, and fails if those
+identities are missing. Artifact history is caller-local and is never restored
+from PRs. The first live run begins observation; allow a full three days before
+expecting third-party Docker updates. Publishing this implementation does not
+activate it in callers until their pinned shared workflow references advance.
+See [candidate retention and resolver policy](docs/maintenance.md).
+
 For security scans, retain permissions for contents, actions, issues, packages,
 pull requests, checks and statuses from the existing wrapper. Set `upload-sarif`
 to `true` only when code scanning is available and grant `security-events: write`.
@@ -84,7 +93,7 @@ empty where no image rebuild is supported. State is saved before dispatch.
 
 ```sh
 python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pip install --require-hashes -r requirements-dev.txt
 npm ci --ignore-scripts
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
@@ -97,17 +106,21 @@ actionlint
 CI runs these checks. Production controllers are typed and linted with the same
 strict checks that caught the previous consumer CI failure. Policy tests use the
 actual pinned Renovate engine, including recursive preset resolution and package
-rule evaluation. The engine container and test dependency update in one PR.
+rule evaluation. The engine container in `config/renovate-image.json` and test dependency update
+in one PR. Docker retention tests exercise the actual engine's lookup pipeline,
+including moved tags, strict age filtering, major versions and missing content.
+Compile development locks from `requirements-dev.in` with `.venv/bin/uv pip compile --universal --generate-hashes --python-version=3.15 --output-file=requirements-dev.txt requirements-dev.in`; `uv.toml` enforces the
+three-day resolver cutoff. Do not edit generated requirements by hand.
 
 After successful push CI on the current default-branch revision, **Release
 shared automation** automatically publishes the next patch version when shared
-actions, controller code, the Renovate runner, or root policy presets changed
+actions, controller code, the Renovate runner, runtime `config/`, or root policy presets changed
 since the last published release. Documentation, tests, release tooling and this
 repository's own dependency bookkeeping do not trigger releases. This prevents
 its own Renovate preset updates from creating a release loop.
 
 PR CI never publishes. Stale revisions and failed or unfinished CI cannot
-publish. Tags are immutable, repeat successful runs do nothing, and a retry after
+publish. The release controller refuses to move existing tags, repeat successful runs do nothing, and a retry after
 tag creation resumes publishing that same tag. Manual dispatch remains available
 for explicit minor/major versions or recovery; an empty version uses the automatic
 patch policy. Breaking action inputs or policy contracts require an explicit

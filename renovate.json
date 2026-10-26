@@ -28,7 +28,7 @@
       "schedule": [
         "before 6am on monday"
       ],
-      "pinDigests": false
+      "pinDigests": true
     },
     {
       "extends": [
@@ -57,6 +57,24 @@
       ],
       "depNameTemplate": "aquasecurity/trivy",
       "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^config/renovate-image\\.json$/"
+      ],
+      "matchStrings": [
+        "\"image\":\\s*\"(?<depName>ghcr\\.io/renovatebot/renovate):(?<currentValue>[^\"@]+)@(?<currentDigest>sha256:[a-f0-9]{64})\""
+      ],
+      "datasourceTemplate": "docker"
     }
-  ]
+  ],
+  "pip_requirements": {
+    "enabled": false
+  },
+  "pip-compile": {
+    "managerFilePatterns": [
+      "/^requirements-dev\\.txt$/"
+    ]
+  }
 }

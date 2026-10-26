@@ -2,16 +2,57 @@ name: Shared Renovate runner
 permissions:
   contents: read
   actions: write
-env:
-  # renovate: datasource=docker depName=ghcr.io/renovatebot/renovate
-  RENOVATE_VERSION: 44.48.1
 defaults:
   run:
     shell: bash
 jobs:
   renovate:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.event_name != 'pull_request_target'
+    concurrency:
+      group: renovate-candidates-${{ github.repository }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
+      - name: Verify the shared workflow source
+        env:
+          # These identify the reusable workflow, rather than the caller checkout.
+          # JSON access also supports actionlint versions predating these fields.
+          SHARED_REPOSITORY: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          SHARED_SHA: ${{ fromJSON(toJSON(job)).workflow_sha }}
+        run: |
+          test "$SHARED_REPOSITORY" = yuzuyuzuyu/repo-automation
+          [[ "$SHARED_SHA" =~ ^[0-9a-f]{40}$ ]]
+      - name: Check out the exact shared workflow implementation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
+          path: automation
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15.1'
+      - name: Restore trusted Docker candidate observations
+        id: candidates
+        working-directory: automation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RENOVATE_CANDIDATE_STATE: ${{ runner.temp }}/renovate-candidates/state.json
+        run: |
+          python -m venv "$RUNNER_TEMP/candidate-venv"
+          "$RUNNER_TEMP/candidate-venv/bin/python" -m src.candidate_state
+      - name: Prepare the pinned engine and retention adapter
+        id: engine
+        run: |
+          image=$(jq -r .image automation/config/renovate-image.json)
+          echo "version=${image#ghcr.io/renovatebot/renovate:}" >> "$GITHUB_OUTPUT"
+          cat > "$RUNNER_TEMP/renovate-command.sh" <<'COMMAND'
+          #!/bin/sh
+          set -eu
+          export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=file:$RENOVATE_AUTOMATION_PATH/src/renovate_bootstrap.mjs"
+          exec renovate
+          COMMAND
+          chmod 0755 "$RUNNER_TEMP/renovate-command.sh"
       - name: Keep scheduled workflows alive
         env:
           GH_TOKEN: ${{ github.token }}
@@ -60,8 +101,14 @@ jobs:
       - uses: renovatebot/github-action@a63d9a7bc606f7336fd20b47f2f32259a35e6213 # v46.3.9
         with:
           token: ${{ steps.app-token.outputs.token }}
-          renovate-version: ${{ env.RENOVATE_VERSION }}
+          renovate-version: ${{ steps.engine.outputs.version }}
+          docker-cmd-file: ${{ runner.temp }}/renovate-command.sh
+          docker-volumes: |
+            ${{ runner.temp }}:${{ runner.temp }}
+            ${{ github.workspace }}/automation:${{ github.workspace }}/automation:ro
         env:
+          RENOVATE_AUTOMATION_PATH: ${{ github.workspace }}/automation
+          RENOVATE_CANDIDATE_STATE: ${{ runner.temp }}/renovate-candidates/state.json
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_PLATFORM: github
           # Docker Hub rejects anonymous pagination beyond 1,000 tags. Stay
@@ -71,6 +118,14 @@ jobs:
           RENOVATE_ONBOARDING: 'false'
           RENOVATE_DRY_RUN: ${{ inputs.dry-run && 'full' || '' }}
           RENOVATE_CONFIG: ${{ inputs.renovate-config }}
+      - name: Preserve observations even if a later Renovate operation failed
+        if: always() && steps.candidates.outcome == 'success' && !inputs.dry-run
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: docker-candidates-v1
+          path: ${{ runner.temp }}/renovate-candidates/state.json
+          retention-days: 90
+          if-no-files-found: error
     timeout-minutes: 45
 on:
   workflow_call:

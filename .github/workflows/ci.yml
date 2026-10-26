@@ -27,7 +27,7 @@ jobs:
       - name: Install development tools
         run: |
           python -m venv .venv
-          .venv/bin/pip install -r requirements-dev.txt
+          .venv/bin/pip install --require-hashes -r requirements-dev.txt
           npm ci --ignore-scripts
       - name: Check production types and lint all Python
         run: |
