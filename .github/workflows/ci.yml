@@ -36,6 +36,10 @@ jobs:
           .venv/bin/mypy src
       - name: Test controllers and action wiring
         run: .venv/bin/python -m unittest discover -s tests -v
+      - name: Test the pinned Renovate action Docker arguments
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .venv/bin/python tests/check_renovate_action.py
       - name: Test effective Renovate policy
         run: npm test
       - name: Validate workflow syntax

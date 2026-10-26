@@ -103,8 +103,9 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           renovate-version: ${{ steps.engine.outputs.version }}
           docker-cmd-file: ${{ runner.temp }}/renovate-command.sh
-          docker-volumes: |
-            ${{ runner.temp }}:${{ runner.temp }}
+          # The action splits mounts on semicolons, not newlines.
+          docker-volumes: >-
+            ${{ runner.temp }}:${{ runner.temp }};
             ${{ github.workspace }}/automation:${{ github.workspace }}/automation:ro
         env:
           RENOVATE_AUTOMATION_PATH: ${{ github.workspace }}/automation
