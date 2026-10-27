@@ -42,6 +42,8 @@ jobs:
         run: .venv/bin/python tests/check_renovate_action.py
       - name: Test effective Renovate policy
         run: npm test
+      - name: Test pnpm bootstrapping in the pinned engine container
+        run: node tests/check_tool_bootstrap.mjs
       - name: Validate workflow syntax
         run: |
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12

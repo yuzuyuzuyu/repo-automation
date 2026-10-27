@@ -5,11 +5,13 @@ export function configureRenovate(config, policy) {
   }
   return {
     ...config,
+    // Renovate adds --ignore-scripts to repository installs. A global npm
+    // setting would also disable trusted tool bootstraps such as pnpm 12.
+    allowScripts: false,
     customEnvVariables: {
       ...config.customEnvVariables,
       UV_EXCLUDE_NEWER: 'P3D',
       npm_config_min_release_age: '3',
-      npm_config_ignore_scripts: 'true',
     },
     packageRules: [
       ...(config.packageRules || []),
