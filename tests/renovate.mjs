@@ -11,6 +11,8 @@ import { extractPackageFile as extractRegex } from 'renovate/dist/modules/manage
 import { extractPackageFile as extractActions } from 'renovate/dist/modules/manager/github-actions/extract.js';
 import { GlobalConfig } from 'renovate/dist/config/global.js';
 import { QEMU_VERSIONING } from '../src/docker_candidates.mjs';
+import { mergeChildConfig } from 'renovate/dist/config/utils.js';
+import { configureRenovate } from '../src/renovate_config.mjs';
 import { applyPackageRules } from 'renovate/dist/util/package-rules/index.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -105,7 +107,30 @@ for (const name of ['python', 'docker/dockerfile', 'node']) {
   const effective = await evaluate(publicConfig, { datasource: 'docker', packageName: name, depName: name, updateType: 'digest', minimumReleaseAgeBehaviour: 'timestamp-required' });
   assert.equal(effective.minimumReleaseAgeBehaviour, 'timestamp-required');
 }
-const runtime = await check({ ...policy('public'), packageRules: [...policy('public').packageRules, ...runtimePolicy.packageRules] });
+const runnerConfig = configureRenovate({ allowedCommands: ['^trusted-command$'] }, runtimePolicy);
+const runtimeValidation = await validateConfig('global', massageConfig(runnerConfig));
+assert.deepEqual(runtimeValidation.errors, []);
+assert.deepEqual(runtimeValidation.warnings, []);
+assert.throws(() => configureRenovate({ force: { packageRules: [] } }, runtimePolicy), /discards repository policy/);
+// Exercise Renovate's actual global -> repository merge, rather than hand-appending
+// rules in an order which the runtime does not use.
+const callerConfig = await check({ ...policy('public', [
+  { matchPackageNames: ['python'], groupName: 'Python runtime', automerge: false },
+  { matchPackageNames: ['local-hold'], enabled: false },
+]), labels: ['dependencies'] });
+const runtime = await resolve(mergeChildConfig(runnerConfig, callerConfig));
+assert.deepEqual(runtime.allowedCommands, ['^trusted-command$']);
+assert.deepEqual(runtime.labels, ['dependencies']);
+assert.equal((await evaluate(runtime)).automerge, true);
+assert.equal((await evaluate(runtime, { updateType: 'major' })).minimumReleaseAge, '7 days');
+assert.equal((await evaluate(runtime, { manager: 'github-actions', updateType: 'digest' })).automerge, false);
+assert.equal((await evaluate(runtime, { packageName: 'local-hold' })).enabled, false);
+const pythonRuntime = await evaluate(runtime, { datasource: 'docker', packageName: 'python', depName: 'python', updateType: 'minor' });
+assert.equal(pythonRuntime.groupName, 'Python runtime');
+assert.equal(pythonRuntime.automerge, false);
+assert.equal(pythonRuntime.minimumReleaseAge, '3 days');
+assert.equal((await evaluate(runtime, { datasource: 'docker', packageName: 'python', updateType: 'digest', minimumReleaseAgeBehaviour: 'timestamp-required' })).minimumReleaseAgeBehaviour, 'timestamp-optional');
+console.log('Runtime configuration merge: repository grouping, manual holds, action digest review, labels, and non-Docker ages preserved.');
 for (const name of runtimePolicy.packageRules.at(-1).matchPackageNames) {
   for (const updateType of ['digest', 'pinDigest', 'patch', 'major']) {
     assert.equal((await evaluate(runtime, { datasource: 'docker', packageName: name, depName: name, updateType })).minimumReleaseAge, null);

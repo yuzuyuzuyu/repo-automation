@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { configureRenovate } from './renovate_config.mjs';
 import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { CandidateStore, retainedDocker, QEMU_VERSIONING } from './docker_candidates.mjs';
@@ -34,13 +35,9 @@ if (process.argv[1] && path.basename(process.argv[1]) === 'renovate.js') {
     hostError: (error) => new ExternalHostError(error, 'docker'),
   }));
 
-  const config = JSON.parse(process.env.RENOVATE_CONFIG || '{}');
-  // Only this runner may use the missing branch-timestamp workaround: the adapter
-  // above has already enforced first-observed age on the exact returned digest.
-  config.customEnvVariables = { ...config.customEnvVariables, UV_EXCLUDE_NEWER: 'P3D', npm_config_min_release_age: '3', npm_config_ignore_scripts: 'true' };
-  config.force = {
-    ...config.force,
-    packageRules: [...(config.force?.packageRules || []), ...policy.packageRules],
-  };
-  process.env.RENOVATE_CONFIG = JSON.stringify(config);
+  // Runtime-only controls are scoped to matching Docker dependencies. The
+  // caller's grouping, automerge decisions, and review holds remain mergeable.
+  process.env.RENOVATE_CONFIG = JSON.stringify(configureRenovate(
+    JSON.parse(process.env.RENOVATE_CONFIG || '{}'), policy,
+  ));
 }
