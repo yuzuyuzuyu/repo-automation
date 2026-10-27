@@ -138,6 +138,22 @@ try {
     assert.equal(await wrapped.getDigest(digestConfig, patch), B);
   }
 
+  // Workflow expressions are not literal registry tags. Stale observations
+  // from an earlier run must not turn dynamic configuration into host errors.
+  const dynamicStore = new CandidateStore(null, () => now);
+  const dynamicTag = '${{ steps.engine.outputs.version }}';
+  dynamicStore.subscribe(dynamicStore.key('https://index.docker.io', 'library/python', dynamicTag));
+  const dynamicSource = Object.create(source);
+  dynamicSource.getDigest = async (_config, tag) => {
+    assert.notEqual(tag, dynamicTag, 'Never send a workflow expression to a registry');
+    return A;
+  };
+  const dynamicAdapter = retainedDocker(dynamicSource, dynamicStore, { registryRepository: getRegistryRepository, versioning, ownedImages });
+  await dynamicAdapter.getReleases({ ...config, currentValue: dynamicTag, registryUrl: 'https://index.docker.io' });
+  await dynamicAdapter.getReleases({ ...config, registryUrl: 'https://index.docker.io' });
+  assert.equal(await dynamicAdapter.getDigest({ ...config, currentValue: dynamicTag, registryUrl: 'https://index.docker.io' }, dynamicTag), null);
+  assert(dynamicStore.mature(dynamicStore.key('https://index.docker.io', 'library/python', config.currentValue), undefined) === null);
+
   // Index observations cannot be mistaken for a platform-specific digest.
   now = Date.parse('2026-04-01T00:00:00Z');
   const platformStore = new CandidateStore(null, () => now);

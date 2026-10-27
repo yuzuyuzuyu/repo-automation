@@ -3,6 +3,7 @@ import path from 'node:path';
 
 export const SOAK_MS = 3 * 24 * 60 * 60 * 1000;
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
+const isDockerTag = (tag) => typeof tag === 'string' && /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/.test(tag);
 const MAX_BYTES = 20_000_000;
 const HISTORY_MS = 90 * 86400000;
 export const QEMU_VERSIONING = "regex:^qemu-v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$";
@@ -129,14 +130,14 @@ export function retainedDocker(original, store, { registryRepository, versioning
   wrapper.getReleases = async (config) => {
     const result = await original.getReleases(config);
     if (!result || owned(config)) return result;
-    const current = config.currentValue;
+    const current = isDockerTag(config.currentValue) ? config.currentValue : undefined;
     const versionsApi = versioningFor(config);
     if (current) store.subscribe(identity(config, current));
     const subscribed = new Set(current ? [current] : []);
     const { registryHost, dockerRepository } = registryRepository(config.packageName, config.registryUrl);
     for (const key of Object.keys(store.state.streams)) {
       const [host, repository, tag, architecture] = JSON.parse(key);
-      if (host === registryHost && repository === dockerRepository && !architecture &&
+      if (host === registryHost && repository === dockerRepository && !architecture && isDockerTag(tag) &&
           store.now() - (store.state.streams[key].requestedAt ?? 0) <= HISTORY_MS) subscribed.add(tag);
     }
     const toObserve = new Set(subscribed);
@@ -182,9 +183,10 @@ export function retainedDocker(original, store, { registryRepository, versioning
   wrapper.getDigest = async (config, value) => {
     if (owned(config)) return original.getDigest(config, value);
     const tag = value || 'latest';
+    if (!isDockerTag(tag)) return null;
     // Native release caches are package-scoped; digest calls also register other
     // current tag variants so their future versions are observed on later runs.
-    if (config.currentValue) store.subscribe(identity(config, config.currentValue));
+    if (isDockerTag(config.currentValue)) store.subscribe(identity(config, config.currentValue));
     const { registryHost, dockerRepository } = registryRepository(config.packageName, config.registryUrl);
     const architecture = config.currentDigest
       ? await original.getImageArchitecture(registryHost, dockerRepository, config.currentDigest) || ''

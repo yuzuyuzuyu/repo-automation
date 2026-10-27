@@ -9,6 +9,9 @@ import { massageConfig } from 'renovate/dist/config/massage.js';
 import { validateConfig } from 'renovate/dist/config/validation.js';
 import { extractPackageFile as extractRegex } from 'renovate/dist/modules/manager/custom/regex/index.js';
 import { extractPackageFile as extractActions } from 'renovate/dist/modules/manager/github-actions/extract.js';
+import { PackageJson } from 'renovate/dist/modules/manager/npm/schema.js';
+import { getPackageManagerVersion } from 'renovate/dist/modules/manager/npm/post-update/utils.js';
+import { extractPackageJson } from 'renovate/dist/modules/manager/npm/extract/common/package-file.js';
 import { GlobalConfig } from 'renovate/dist/config/global.js';
 import { QEMU_VERSIONING } from '../src/docker_candidates.mjs';
 import { mergeChildConfig } from 'renovate/dist/config/utils.js';
@@ -215,3 +218,19 @@ const qemu = await evaluate(publicConfig, { datasource: 'docker', packageName: '
 assert.equal(qemu.versioning, QEMU_VERSIONING);
 assert.equal((await evaluate(publicConfig, { manager: 'github-actions', datasource: 'node-version', packageName: 'actions/node-versions', depName: 'node' })).groupName, 'Node runtime');
 console.log('Buildx, BuildKit, QEMU and CI runtime dependency extraction/grouping passed.');
+
+// A Corepack integrity suffix remains in the repository, while the tool installer
+// receives a plain version instead of treating the hash as part of its path.
+const pinnedPnpm = {
+  packageManager: `pnpm@12.15.0+sha512.${'a'.repeat(128)}`,
+  devEngines: { packageManager: { name: 'pnpm', version: '12.15.0', onFail: 'ignore' } },
+};
+const parsedPnpm = PackageJson.parse(JSON.stringify(pinnedPnpm));
+assert.equal(getPackageManagerVersion('pnpm', parsedPnpm), '12.15.0');
+assert(parsedPnpm.packageManager.version.includes('+sha512.'));
+const pnpmDeps = extractPackageJson(pinnedPnpm, 'package.json').deps.filter((dep) => dep.depName === 'pnpm');
+assert.deepEqual(pnpmDeps.map((dep) => dep.depType).sort(), ['devEngines.packageManager', 'packageManager']);
+for (const dep of pnpmDeps) {
+  assert.equal((await evaluate(publicConfig, { ...dep, packageName: 'pnpm' })).groupName, 'pnpm runtime');
+}
+console.log('pnpm: integrity pin retained, installer version normalized, and both native dependency fields grouped.');
