@@ -1,7 +1,7 @@
 name: Release shared automation
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [CI, Renovate]
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -28,7 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # Only a successful push CI run on our default branch reaches this job.
+      # Only trusted successful push runs on our default branch reach this job.
+      # The release script requires both CI and the live Renovate job to pass.
       # Never check out a PR revision or download CI artifacts here.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

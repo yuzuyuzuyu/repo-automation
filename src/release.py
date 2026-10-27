@@ -78,12 +78,29 @@ def api(endpoint: str, paginate: bool = False) -> Any:
 def tested_current_head(repository: str, branch: str, head: str) -> bool:
     if api(f"repos/{repository}/commits/{branch}")["sha"] != head:
         return False
-    runs = api(
-        f"repos/{repository}/actions/workflows/ci.yml/runs?head_sha={head}&event=push&per_page=100"
-    )["workflow_runs"]
-    return bool(
-        runs and runs[0]["status"] == "completed" and runs[0]["conclusion"] == "success"
-    )
+    for workflow in ("ci.yml", "renovate.yml"):
+        runs = api(
+            f"repos/{repository}/actions/workflows/{workflow}/runs?head_sha={head}&event=push&per_page=100"
+        )["workflow_runs"]
+        if not (
+            runs
+            and runs[0]["status"] == "completed"
+            and runs[0]["conclusion"] == "success"
+        ):
+            return False
+        if workflow == "renovate.yml":
+            jobs = api(f"repos/{repository}/actions/runs/{runs[0]['id']}/jobs")["jobs"]
+            if not any(
+                job["conclusion"] == "success"
+                and any(
+                    step["name"].startswith("Run renovatebot/github-action@")
+                    and step["conclusion"] == "success"
+                    for step in job.get("steps", [])
+                )
+                for job in jobs
+            ):
+                return False
+    return True
 
 
 def main() -> None:
@@ -93,7 +110,9 @@ def main() -> None:
     if command(["git", "rev-parse", "HEAD"]) != head:
         raise ValueError("Checkout does not match the tested release revision")
     if not tested_current_head(repository, branch, head):
-        print("Release skipped: revision is not current with successful push CI")
+        print(
+            "Release skipped: revision is not current with successful push CI and live Renovate"
+        )
         return
     names = command(["git", "tag", "--list", "v*"]).splitlines()
     tags = {

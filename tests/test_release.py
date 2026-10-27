@@ -72,13 +72,33 @@ class ReleaseTests(unittest.TestCase):
                 choose_version({"v1.0.1": "old"}, {"v1.0.1"}, "head", [], requested)
 
     @patch("src.release.api")
-    def test_current_successful_push_ci_is_required(self, api):
+    def test_current_successful_push_ci_and_live_renovate_are_required(self, api):
         api.side_effect = [
             {"sha": "head"},
             {"workflow_runs": [{"status": "completed", "conclusion": "success"}]},
+            {
+                "workflow_runs": [
+                    {"id": 123, "status": "completed", "conclusion": "success"}
+                ]
+            },
+            {
+                "jobs": [
+                    {
+                        "conclusion": "success",
+                        "steps": [
+                            {
+                                "name": "Run renovatebot/github-action@pinned",
+                                "conclusion": "success",
+                            }
+                        ],
+                    }
+                ]
+            },
         ]
         self.assertTrue(tested_current_head("owner/repo", "main", "head"))
-        self.assertIn("event=push", api.call_args.args[0])
+        self.assertIn(
+            "renovate.yml/runs?head_sha=head&event=push", api.call_args_list[2].args[0]
+        )
 
     @patch("src.release.api")
     def test_failed_pending_or_missing_ci_blocks_release(self, api):
@@ -90,6 +110,51 @@ class ReleaseTests(unittest.TestCase):
             with self.subTest(runs=runs):
                 api.side_effect = [{"sha": "head"}, {"workflow_runs": runs}]
                 self.assertFalse(tested_current_head("owner/repo", "main", "head"))
+
+    @patch("src.release.api")
+    def test_failed_or_missing_live_run_blocks_even_when_ci_passed(self, api):
+        for runs in [
+            [],
+            [{"status": "completed", "conclusion": "failure"}],
+            [{"status": "in_progress", "conclusion": None}],
+        ]:
+            with self.subTest(runs=runs):
+                api.side_effect = [
+                    {"sha": "head"},
+                    {
+                        "workflow_runs": [
+                            {"status": "completed", "conclusion": "success"}
+                        ]
+                    },
+                    {"workflow_runs": runs},
+                ]
+                self.assertFalse(tested_current_head("owner/repo", "main", "head"))
+
+    @patch("src.release.api")
+    def test_skipped_action_cannot_qualify_as_a_live_test(self, api):
+        api.side_effect = [
+            {"sha": "head"},
+            {"workflow_runs": [{"status": "completed", "conclusion": "success"}]},
+            {
+                "workflow_runs": [
+                    {"id": 123, "status": "completed", "conclusion": "success"}
+                ]
+            },
+            {
+                "jobs": [
+                    {
+                        "conclusion": "success",
+                        "steps": [
+                            {
+                                "name": "Run renovatebot/github-action@pinned",
+                                "conclusion": "skipped",
+                            }
+                        ],
+                    }
+                ]
+            },
+        ]
+        self.assertFalse(tested_current_head("owner/repo", "main", "head"))
 
     @patch("src.release.api", return_value={"sha": "newer"})
     def test_superseded_revision_cannot_release(self, api):
