@@ -1,5 +1,5 @@
 # Development tools; compile to requirements-dev.txt with uv and hashes.
-ruff==0.17.2
+ruff==0.17.3
 mypy==2.4.0
 PyYAML==6.0.3
 uv==0.13.6
