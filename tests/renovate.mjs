@@ -14,6 +14,8 @@ import { QEMU_VERSIONING } from '../src/docker_candidates.mjs';
 import { mergeChildConfig } from 'renovate/dist/config/utils.js';
 import { configureRenovate } from '../src/renovate_config.mjs';
 import { applyPackageRules } from 'renovate/dist/util/package-rules/index.js';
+import { processResult } from 'renovate/dist/workers/repository/result.js';
+import * as errors from 'renovate/dist/constants/error-messages.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repository = 'yuzuyuzuyu/repo-automation';
@@ -21,6 +23,18 @@ export const preset = (name) => `github>${repository}:${name}#v1.0.0`;
 process.env.LOG_LEVEL = 'warn';
 await initLogger();
 init();
+// The shared launcher retries only code 6. Engine upgrades must preserve this
+// experimental contract so credential, configuration and host failures stay fatal.
+for (const result of errors.TemporaryErrors) {
+  assert.equal(processResult({}, result).exitCode, 6, result);
+}
+for (const result of [
+  ...errors.SystemErrors, ...errors.PlatformErrors, ...errors.ConfigErrors,
+  errors.EXTERNAL_HOST_ERROR, errors.MANAGER_LOCKFILE_ERROR,
+  errors.MISSING_API_CREDENTIALS, errors.UNKNOWN_ERROR,
+]) {
+  assert.notEqual(processResult({}, result).exitCode, 6, result);
+}
 // Exercise Renovate's real recursive preset resolver without fetching unpublished files.
 for (const file of fs.readdirSync(root).filter((f) => f.endsWith('.json') && !['package.json', 'package-lock.json', 'renovate.json'].includes(f))) {
   const name = file.slice(0, -5);

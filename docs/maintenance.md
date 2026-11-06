@@ -9,6 +9,25 @@ it requires Renovate's successful artifact-generation check and blocks pending
 release-age checks or failed Renovate checks. Status events refresh the gate
 without waiting for another Renovate run after CI passes.
 
+The shared Renovate launcher makes at most three attempts when the pinned engine
+returns temporary-error exit code 6, including `repository-changed`, waiting 15
+then 30 seconds. Other exit codes fail immediately; three interrupted attempts
+still fail the job. Every attempt starts a fresh Renovate process and retains
+the same Docker observations. The job's 45-minute timeout still applies.
+
+Readiness API calls make at most three attempts for connection failures, timeouts,
+HTTP 408 and HTTP 5xx responses, waiting two then four seconds. Each GitHub CLI
+invocation has a 30-second timeout. Failed attempts print the CLI error, and
+exhausted retries still fail the action. Authentication, permissions, rate limits
+and other client errors fail immediately; rate limits need their server-specified
+delay rather than this short retry loop. Retrying a status write repeats the same
+commit, context and state, so an uncertain response cannot change the decision.
+
+These retries live in the shared implementation. After its next release,
+consumers receive them by updating their pinned Renovate workflow and readiness
+action references together through the existing Repository automation updates.
+No new consumer inputs, secrets or retry steps are required.
+
 Routine releases soak for three days; majors soak for a week. Lockfile maintenance
 is age-exempt because it has no release timestamp, but still needs successful
 artifact generation and CI. Stale branches need a rebase and fresh CI before

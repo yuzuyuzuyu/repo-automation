@@ -5,11 +5,37 @@ Run only from the default branch; never import or execute pull-request code.
 
 import json
 import os
+import re
 import subprocess
+import sys
+import time
 from typing import Any
 
 CONTEXT = "Dependency update safety"
 ARTIFACTS = "renovate/artifacts"
+
+
+def retryable_api_error(error: subprocess.CalledProcessError) -> bool:
+    detail = (error.stderr or "").lower()
+    status = re.search(r"\bhttp (\d{3})\b", detail)
+    if status:
+        # Rate limits require response-specific delays. Leave those, permission
+        # errors and other client errors visible for the next workflow run.
+        return status[1] == "408" or status[1].startswith("5")
+    return any(
+        message in detail
+        for message in (
+            "error connecting to ",
+            "connection reset",
+            "connection refused",
+            "i/o timeout",
+            "tls handshake timeout",
+            "temporary failure in name resolution",
+            "no such host",
+            "unexpected eof",
+            "context deadline exceeded",
+        )
+    ) or detail.rstrip().endswith(": eof")
 
 
 def evaluate(
@@ -51,13 +77,37 @@ def api(
     if payload is not None:
         command += ["--method", "POST", "--input", "-"]
     # Fixed executable and argument list, with JSON on stdin; no shell or PR code.
-    result = subprocess.run(  # noqa: S603
-        command,
-        input=json.dumps(payload) if payload else None,
-        text=True,
-        capture_output=True,
-        check=True,
-    )
+    attempt = 1
+    while True:
+        try:
+            result = subprocess.run(  # noqa: S603
+                command,
+                input=json.dumps(payload) if payload is not None else None,
+                text=True,
+                capture_output=True,
+                check=True,
+                timeout=30,
+            )
+            break
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+            detail = (
+                error.stderr or f"GitHub CLI exited with code {error.returncode}"
+                if isinstance(error, subprocess.CalledProcessError)
+                else "GitHub CLI timed out after 30 seconds"
+            )
+            print(
+                f"GitHub API {path} failed (attempt {attempt}/3): {detail}",
+                file=sys.stderr,
+            )
+            if attempt == 3 or (
+                isinstance(error, subprocess.CalledProcessError)
+                and not retryable_api_error(error)
+            ):
+                raise
+            delay = 2**attempt
+            print(f"Retrying GitHub API in {delay} seconds", file=sys.stderr)
+            time.sleep(delay)
+            attempt += 1
     data = json.loads(result.stdout)
     return [item for page in data for item in page] if paginate else data
 
